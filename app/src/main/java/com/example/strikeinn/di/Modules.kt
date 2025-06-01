@@ -37,7 +37,7 @@ val networkModule: Module = module {
             install(HttpTimeout) {
                 requestTimeoutMillis = 10000
             }
-
+            close()
         }
     }
 

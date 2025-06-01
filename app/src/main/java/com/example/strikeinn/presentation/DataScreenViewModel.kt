@@ -25,9 +25,6 @@ class DataScreenViewModel(
     private val _uiState = MutableStateFlow<DataScreenUIState>(DataScreenUIState.Idle)
     val uiState: StateFlow<DataScreenUIState> = _uiState
 
-    private val _eventInfo = MutableStateFlow(EventInfo())
-    val eventInfo: StateFlow<EventInfo> = _eventInfo
-
     private var realtimeDataJob: Job? = null
 
     init {
@@ -60,40 +57,33 @@ class DataScreenViewModel(
                     meetingKey = actualMeetingKey
                 ).firstOrNull()
 
-                _eventInfo.value = EventInfo(
-                    date = session?.date_start ?: "",
-                    eventName = meeting?.meeting_official_name ?: "",
-                    eventType = session?.session_type ?: "",
-                    country = session?.country_name ?: "",
-                    circuit = session?.circuit_short_name ?: ""
+                val eventInfo = EventInfo(
+                    date = session?.date_start.orEmpty(),
+                    meetingName = meeting?.meeting_official_name.orEmpty(),
+                    sessionName = session?.session_name.orEmpty(),
+                    country = session?.country_name.orEmpty(),
+                    circuit = session?.circuit_short_name.orEmpty()
                 )
-
 
                 val drivers = apiClient.getDrivers(
                     sessionKey = actualSessionKey,
                     meetingKey = actualMeetingKey
                 )
 
-                val intervalsFlow = apiClient.getIntervalsFlow(
-                    sessionKey = actualSessionKey,
-                    meetingKey = actualMeetingKey
-                )
-
-                val positionsFlow = apiClient.getPositionFlow(
-                    sessionKey = actualSessionKey,
-                    meetingKey = actualMeetingKey
-                )
-
                 combine(
-                    intervalsFlow,
-                    positionsFlow
-                ) { intervals, positions ->
-                    val driverInfoList = processData(drivers, intervals, positions)
-
-                    DataScreenUIState.Success(
-                        driverInfoList = driverInfoList,
+                    apiClient.getIntervalsFlow(
+                        sessionKey = actualSessionKey,
+                        meetingKey = actualMeetingKey
+                    ),
+                    apiClient.getPositionFlow(
+                        sessionKey = actualSessionKey,
+                        meetingKey = actualMeetingKey
                     )
-
+                ) { intervals, positions ->
+                    DataScreenUIState.Success(
+                        driverInfoList = processData(drivers, intervals, positions),
+                        eventInfo = eventInfo
+                    )
                 }.collect { uiState ->
                     _uiState.value = uiState
                 }
@@ -112,20 +102,62 @@ class DataScreenViewModel(
     }
 
     fun refreshData() {
-        realtimeDataJob?.cancel()
         loadLiveDriverData()
     }
 }
-
-
 private fun processData(
     drivers: List<Drivers>,
     intervals: List<Intervals>,
     positions: List<Position>
 ): List<DriverInfo> {
+    val driverInfoMap = drivers.associateByTo(
+        mutableMapOf(),
+        { it.driver_number },
+        {
+            DriverInfo(
+                driverName = it.name_acronym,
+                teamColor = it.team_colour,
+                driverNumber = it.driver_number
+            )
+        }
+    )
+    positions
+        .groupBy { it.driver_number }
+        .forEach { (driverNumber, posList) ->
+            posList.maxByOrNull { it.date }?.let { latestPosition ->
+                driverInfoMap[driverNumber]?.let { currentInfo ->
+                    driverInfoMap[driverNumber] = currentInfo.copy(
+                        position = latestPosition.position
+                    )
+                }
+            }
+        }
 
+    intervals
+        .groupBy { it.driver_number }
+        .forEach { (driverNumber, intList) ->
+            if (driverNumber == -1) return@forEach
+            intList.maxByOrNull { it.date }?.let { latestInterval ->
+                driverInfoMap[driverNumber]?.let { currentInfo ->
+                    val gap = extractJsonValue(latestInterval.gap_to_leader)
+                    val interval = extractJsonValue(latestInterval.interval)
+                    driverInfoMap[driverNumber] = currentInfo.copy(
+                        gap = gap,
+                        interval = interval
+                    )
+                }
+            }
+        }
+    return driverInfoMap.values.toList().sortedBy { it.position }
+}
+
+/*
+private fun processData(
+    drivers: List<Drivers>,
+    intervals: List<Intervals>,
+    positions: List<Position>
+): List<DriverInfo> {
     val driverInfoMap = mutableMapOf<Int, DriverInfo>()
-
     drivers.forEach { driver ->
         driverInfoMap[driver.driver_number] = DriverInfo(
             driverName = driver.name_acronym,
@@ -133,8 +165,6 @@ private fun processData(
             driverNumber = driver.driver_number
         )
     }
-
-
     val latestPositions = positions
         .groupBy { it.driver_number }
         .mapValues { (_, posList) ->
@@ -151,13 +181,11 @@ private fun processData(
             }
         }
     }
-
     val latestIntervals = intervals
         .groupBy { it.driver_number }
         .mapValues { (_, intList) ->
             intList.maxByOrNull { it.date }
         }
-
     latestIntervals.forEach { (driverNumber, intData) ->
         if (intData != null && driverNumber != -1) {
             val currentInfo =
@@ -176,6 +204,8 @@ private fun processData(
     return driverInfoMap.values.toList().sortedBy { it.position }
 }
 
+ */
+
 
 private fun extractJsonValue(element: JsonElement?): String {
     if (element == null) return "-"
@@ -187,6 +217,7 @@ private fun extractJsonValue(element: JsonElement?): String {
         }
     } catch (e: Exception) {
         "Error extraer los valores del JsonElement: ${e.message}"
+        "-"
     }
 }
 
@@ -195,7 +226,8 @@ sealed class DataScreenUIState {
     object Loading : DataScreenUIState()
     data class Error(val message: String) : DataScreenUIState()
     data class Success(
-        val driverInfoList: List<DriverInfo>
+        val driverInfoList: List<DriverInfo>,
+        val eventInfo: EventInfo
     ) : DataScreenUIState()
 
 }
@@ -213,8 +245,8 @@ data class DriverInfo(
 @Serializable
 data class EventInfo(
     val date: String = "",
-    val eventName: String = "",
-    val eventType: String = "",
+    val meetingName: String = "",
+    val sessionName: String = "",
     val country: String = "",
     val circuit: String = ""
 )

@@ -28,7 +28,7 @@ import androidx.compose.ui.unit.sp
 fun Header(
     eventName: String,
     date: String,
-    eventType: String,
+    sessionName: String,
     onClick: () -> Unit
 ) {
     Card(
@@ -50,7 +50,11 @@ fun Header(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Text(text = eventName, fontSize = 24.sp, textAlign = TextAlign.Center)
+            Text(
+                text = eventName,
+                fontSize = 24.sp,
+                textAlign = TextAlign.Center
+            )
             HorizontalDivider(
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -60,7 +64,7 @@ fun Header(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(
-                    onClick = { onClick() } ,
+                    onClick = { onClick() },
                     modifier = Modifier
                 ) {
                     Icon(Icons.Default.Search, contentDescription = "Search")
@@ -68,7 +72,7 @@ fun Header(
 
                 Text(text = formatDate(date), fontSize = 14.sp)
 
-                Text(text = eventType, fontSize = 14.sp)
+                Text(text = "$sessionName ", fontSize = 14.sp)
             }
 
 

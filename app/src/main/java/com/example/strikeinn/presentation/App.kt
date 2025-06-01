@@ -20,7 +20,6 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
@@ -48,7 +47,6 @@ import org.koin.compose.viewmodel.koinViewModel
 fun App() {
     val vm = koinViewModel<DataScreenViewModel>()
     val uiState by vm.uiState.collectAsStateWithLifecycle()
-    val eventInfo by vm.eventInfo.collectAsStateWithLifecycle()
     var showBottomSheet by remember { mutableStateOf(false) }
 
     Scaffold(
@@ -64,10 +62,11 @@ fun App() {
         ) {
             when (val currentState = uiState) {
                 is DataScreenUIState.Idle -> "Esperando datos..."
-                is DataScreenUIState.Loading -> LoadingIndicator()
+                is DataScreenUIState.Loading -> Indicator()
                 is DataScreenUIState.Error -> stringResource(R.string.error_grave)
                 is DataScreenUIState.Success -> {
                     val driverInfoList = currentState.driverInfoList
+                    val eventInfo = currentState.eventInfo
 
                     Column(
                         modifier = Modifier.fillMaxSize(),
@@ -78,9 +77,9 @@ fun App() {
                         // Info del Evnto......................................................
 
                         Header(
-                            eventName = eventInfo.eventName,
+                            eventName = eventInfo.meetingName,
                             date = eventInfo.date,
-                            eventType = eventInfo.eventType,
+                            sessionName = eventInfo.sessionName,
                             onClick = {
                                 showBottomSheet = true
                             })
