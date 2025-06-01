@@ -1,3 +1,9 @@
 <resources>
     <string name="app_name">StrikeINN</string>
+    <string name="header_grand_prix">Grand Prix:</string>
+    <string name="header_date">Date:</string>
+    <string name="header_event">Event:</string>
+    <string name="header_no_data">No event data</string>
+    <string name="error_driver_data">No driver data</string>
+    <string name="error_grave">Critical Error</string>
 </resources>
