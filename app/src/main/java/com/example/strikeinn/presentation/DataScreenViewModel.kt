@@ -10,12 +10,13 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.cancellable
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.jsonPrimitive
+import java.time.ZonedDateTime
 
 class DataScreenViewModel(
     private val apiClient: F1ApiClient
@@ -32,8 +33,8 @@ class DataScreenViewModel(
     }
 
     fun loadLiveDriverData(
-        sessionKey: String? = "latest",
-        meetingKey: String? = "latest",
+        sessionKeyParam: String? = "latest",
+        meetingKeyParam: String? = "latest",
         year: Int? = null,
         circuit: String? = null,
         event: String? = null
@@ -44,18 +45,28 @@ class DataScreenViewModel(
         realtimeDataJob = viewModelScope.launch(Dispatchers.IO) {
             try {
                 val session = apiClient.getSessions(
-                    sessionKey = sessionKey,
-                    meetingKey = meetingKey,
+                    sessionKey = sessionKeyParam,
+                    meetingKey = meetingKeyParam,
                     year = year,
                     circuitShortName = circuit,
                     sessionName = event
                 ).firstOrNull()
+
                 val actualSessionKey = session?.session_key.toString()
                 val actualMeetingKey = session?.meeting_key.toString()
+                val sessionEndDate = parseEndDate(
+                    session?.date_end,
+                    session?.gmt_offset
+                )
 
                 val meeting = apiClient.getMeetings(
                     meetingKey = actualMeetingKey
                 ).firstOrNull()
+
+                val drivers = apiClient.getDrivers(
+                    sessionKey = actualSessionKey,
+                    meetingKey = actualMeetingKey
+                )
 
                 val eventInfo = EventInfo(
                     date = session?.date_start.orEmpty(),
@@ -65,27 +76,42 @@ class DataScreenViewModel(
                     circuit = session?.circuit_short_name.orEmpty()
                 )
 
-                val drivers = apiClient.getDrivers(
-                    sessionKey = actualSessionKey,
-                    meetingKey = actualMeetingKey
-                )
-
-                combine(
-                    apiClient.getIntervalsFlow(
-                        sessionKey = actualSessionKey,
-                        meetingKey = actualMeetingKey
-                    ),
-                    apiClient.getPositionFlow(
+                if (sessionEndDate != null && ZonedDateTime.now().isAfter(sessionEndDate)) {
+                    val statiIntervals = apiClient.getStaticIntervals(
                         sessionKey = actualSessionKey,
                         meetingKey = actualMeetingKey
                     )
-                ) { intervals, positions ->
-                    DataScreenUIState.Success(
-                        driverInfoList = processData(drivers, intervals, positions),
+                    val staticPositions = apiClient.getStaticPositions(
+                        sessionKey = actualSessionKey,
+                        meetingKey = actualMeetingKey
+                    )
+
+                    _uiState.value = DataScreenUIState.Success(
+                        driverInfoList = processData(drivers, statiIntervals, staticPositions),
                         eventInfo = eventInfo
                     )
-                }.collect { uiState ->
-                    _uiState.value = uiState
+
+                } else {
+                    combine(
+                        apiClient.getIntervals(
+                            sessionKey = actualSessionKey,
+                            meetingKey = actualMeetingKey,
+                        ),
+                        apiClient.getPosition(
+                            sessionKey = actualSessionKey,
+                            meetingKey = actualMeetingKey,
+                        )
+                    ) { intervals, positions ->
+                        DataScreenUIState.Success(
+                            driverInfoList = processData(drivers, intervals, positions),
+                            eventInfo = eventInfo
+                        )
+                    }
+                        .cancellable()                      //????
+                        .distinctUntilChanged()             //????
+                        .collectLatest { uiState ->
+                            _uiState.value = uiState
+                        }
                 }
 
             } catch (e: Exception) {
@@ -105,6 +131,7 @@ class DataScreenViewModel(
         loadLiveDriverData()
     }
 }
+
 private fun processData(
     drivers: List<Drivers>,
     intervals: List<Intervals>,
@@ -125,6 +152,7 @@ private fun processData(
         .groupBy { it.driver_number }
         .forEach { (driverNumber, posList) ->
             posList.maxByOrNull { it.date }?.let { latestPosition ->
+                println("Driver $driverNumber: Position=${latestPosition.position}")  // PRINT ....
                 driverInfoMap[driverNumber]?.let { currentInfo ->
                     driverInfoMap[driverNumber] = currentInfo.copy(
                         position = latestPosition.position
@@ -139,8 +167,9 @@ private fun processData(
             if (driverNumber == -1) return@forEach
             intList.maxByOrNull { it.date }?.let { latestInterval ->
                 driverInfoMap[driverNumber]?.let { currentInfo ->
-                    val gap = extractJsonValue(latestInterval.gap_to_leader)
-                    val interval = extractJsonValue(latestInterval.interval)
+                    val gap = latestInterval.gapToLeaderValue
+                    val interval = latestInterval.intervalValue
+                    println("Driver $driverNumber: Gap=$gap, Interval=$interval")  //PRINT .....
                     driverInfoMap[driverNumber] = currentInfo.copy(
                         gap = gap,
                         interval = interval
@@ -205,21 +234,6 @@ private fun processData(
 }
 
  */
-
-
-private fun extractJsonValue(element: JsonElement?): String {
-    if (element == null) return "-"
-    return try {
-        when {
-            element is JsonPrimitive && element.isString -> element.content
-            element is JsonPrimitive -> element.jsonPrimitive.content
-            else -> element.toString()
-        }
-    } catch (e: Exception) {
-        "Error extraer los valores del JsonElement: ${e.message}"
-        "-"
-    }
-}
 
 sealed class DataScreenUIState {
     object Idle : DataScreenUIState()

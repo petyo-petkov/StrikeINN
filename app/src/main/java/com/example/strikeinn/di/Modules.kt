@@ -30,7 +30,8 @@ val networkModule: Module = module {
                         prettyPrint = true
                         coerceInputValues = true
                         explicitNulls = false
-                    })
+                    }
+                )
             }
             install(HttpCache)
 

@@ -29,11 +29,18 @@ interface F1Api {
         sessionKey: String? = null,
     ): List<Drivers>
 
-    fun getIntervalsFlow(
+    fun getIntervals(
         sessionKey: String? = null,
         meetingKey: String? = null,
         driverNumber: Int? = null,
     ): Flow<List<Intervals>>
+
+    suspend fun getStaticIntervals(
+        sessionKey: String? = null,
+        meetingKey: String? = null,
+        driverNumber: Int? = null,
+    ): List<Intervals>
+
 
     fun getLaps(
         sessionKey: String? = null,
@@ -71,11 +78,17 @@ interface F1Api {
         meetingKey: String? = null,
     ): Flow<List<Pit>>
 
-    fun getPositionFlow(
+    fun getPosition(
         driverNumber: Int? = null,
         sessionKey: String? = null,
         meetingKey: String? = null,
     ): Flow<List<Position>>
+
+    suspend fun getStaticPositions(
+        driverNumber: Int? = null,
+        sessionKey: String? = null,
+        meetingKey: String? = null,
+    ): List<Position>
 
     fun getRaceControl(
         driverNumber: Int? = null,
@@ -99,8 +112,6 @@ interface F1Api {
         sessionKey: String? = null,
         meetingKey: String? = null,
     ): Flow<List<Weather>>
-
-    suspend fun refresh()
 
 
 }

@@ -70,6 +70,16 @@ fun DriverListItem(
         }
 
         Text(
+            text = gap,
+            modifier = Modifier
+                .padding(start = 12.dp)
+                .weight(1f),
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1
+
+        )
+
+        Text(
             text = interval,
             modifier = Modifier
                 .padding(start = 12.dp)
@@ -79,15 +89,6 @@ fun DriverListItem(
         )
 
 
-        Text(
-            text = gap,
-            modifier = Modifier
-                .padding(start = 12.dp)
-                .weight(1f),
-            fontWeight = FontWeight.SemiBold,
-            maxLines = 1
-
-        )
     }
 }
 

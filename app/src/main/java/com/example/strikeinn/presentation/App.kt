@@ -75,7 +75,6 @@ fun App() {
                     ) {
 
                         // Info del Evnto......................................................
-
                         Header(
                             eventName = eventInfo.meetingName,
                             date = eventInfo.date,
@@ -99,7 +98,6 @@ fun App() {
                         ) {
 
                             //Driver position, team color, driver name........................
-
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.Center,
@@ -107,14 +105,14 @@ fun App() {
                                 Spacer(modifier = Modifier.width(80.dp))
 
                                 Text(
-                                    text = "Interval",
+                                    text = "Gap",
                                     modifier = Modifier
                                         .padding(start = 8.dp)
                                         .weight(1f)
                                 )
 
                                 Text(
-                                    text = "Gap",
+                                    text = "Interval",
                                     modifier = Modifier
                                         .padding(start = 8.dp)
                                         .weight(1f)
@@ -159,8 +157,8 @@ fun App() {
                     showBottomSheet = false
                 }, onOKClick = { year, circuit, event ->
                     vm.loadLiveDriverData(
-                        sessionKey = null,
-                        meetingKey = null,
+                        sessionKeyParam = null,
+                        meetingKeyParam = null,
                         year = year,
                         circuit = circuit,
                         event = event
