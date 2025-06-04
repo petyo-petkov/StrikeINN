@@ -26,6 +26,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -40,6 +41,8 @@ import com.example.strikeinn.R
 import com.example.strikeinn.network.circuits
 import com.example.strikeinn.network.eventTypes
 import com.example.strikeinn.network.years
+import com.example.strikeinn.viewModel.DataScreenUIState
+import com.example.strikeinn.viewModel.DataScreenViewModel
 import org.koin.compose.viewmodel.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
@@ -48,6 +51,10 @@ fun App() {
     val vm = koinViewModel<DataScreenViewModel>()
     val uiState by vm.uiState.collectAsStateWithLifecycle()
     var showBottomSheet by remember { mutableStateOf(false) }
+
+    LaunchedEffect(key1 = Unit) {
+        vm.loadLiveDriverData()
+    }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),

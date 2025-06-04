@@ -2,7 +2,7 @@ package com.example.strikeinn.di
 
 import com.example.strikeinn.network.F1Api
 import com.example.strikeinn.network.F1ApiClient
-import com.example.strikeinn.presentation.DataScreenViewModel
+import com.example.strikeinn.viewModel.DataScreenViewModel
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
 import io.ktor.client.plugins.HttpTimeout
