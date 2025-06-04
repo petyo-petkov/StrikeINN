@@ -38,8 +38,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.strikeinn.R
-import com.example.strikeinn.network.circuits
-import com.example.strikeinn.network.eventTypes
 import com.example.strikeinn.network.years
 import com.example.strikeinn.viewModel.DataScreenUIState
 import com.example.strikeinn.viewModel.DataScreenViewModel
@@ -50,6 +48,7 @@ import org.koin.compose.viewmodel.koinViewModel
 fun App() {
     val vm = koinViewModel<DataScreenViewModel>()
     val uiState by vm.uiState.collectAsStateWithLifecycle()
+
     var showBottomSheet by remember { mutableStateOf(false) }
 
     LaunchedEffect(key1 = Unit) {
@@ -160,9 +159,11 @@ fun App() {
         }
         if (showBottomSheet) {
             BottomSheet(
+                vm = vm,
                 onDismiss = {
                     showBottomSheet = false
-                }, onOKClick = { year, circuit, event ->
+                },
+                onOKClick = { year, circuit, event ->
                     vm.loadLiveDriverData(
                         sessionKeyParam = null,
                         meetingKeyParam = null,
@@ -182,16 +183,24 @@ fun App() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BottomSheet(
+    vm: DataScreenViewModel,
     onDismiss: () -> Unit,
     onOKClick: (year: Int, circuit: String, event: String) -> Unit,
     onRefreshClick: () -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState()
 
-    var selectedYear by remember { mutableStateOf("2025") }
-    var selectedCircuit by remember { mutableStateOf("Selecciona una opción") }
-    var selectedEventType by remember { mutableStateOf("Selecciona una opción") }
+    val listCircuits by vm.listCircuits.collectAsStateWithLifecycle()
+    val listEvents by vm.listEventsState.collectAsStateWithLifecycle()
 
+    var selectedYear by remember { mutableStateOf("2025") }
+    var selectedCircuit by remember { mutableStateOf("Selecciona primero el año") }
+    var selectedEventType by remember { mutableStateOf("Selecciona primero el circuito") }
+
+    LaunchedEffect(key1 = selectedYear, key2 = selectedCircuit, key3 = selectedEventType) {
+        vm.fetchCircuits(selectedYear.toInt())
+        vm.fetchEvents(selectedCircuit)
+    }
 
     ModalBottomSheet(
         onDismissRequest = {
@@ -211,8 +220,8 @@ fun BottomSheet(
             selectedRaceType = selectedEventType,
             onRaceTypeSelected = { selectedEventType = it },
             years = years,
-            circuits = circuits,
-            raceTypes = eventTypes,
+            circuits = listCircuits,
+            raceTypes = listEvents,
             onDismiss = { onDismiss() },
             onOkClick = {
                 onOKClick(

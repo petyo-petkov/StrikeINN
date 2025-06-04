@@ -27,8 +27,26 @@ class DataScreenViewModel(
     private val _uiState = MutableStateFlow<DataScreenUIState>(DataScreenUIState.Idle)
     val uiState: StateFlow<DataScreenUIState> = _uiState
 
-    private val listCircuits = MutableStateFlow<List<String>>(emptyList())
-    val listCircuitsState: StateFlow<List<String>> = listCircuits
+    private val _listCircuits = MutableStateFlow<List<String>>(emptyList())
+    val listCircuits: StateFlow<List<String>> = _listCircuits
+
+    private val _listEvents = MutableStateFlow<List<String>>(emptyList())
+    val listEventsState: StateFlow<List<String>> = _listEvents
+
+    fun fetchCircuits(year: Int){
+        viewModelScope.launch {
+            val circuits = apiClient.getSessions(year = year).map { it.circuit_short_name }.distinct()
+            _listCircuits.value = circuits
+            println("Circuitos: $circuits")
+        }
+    }
+    fun fetchEvents(circuit: String){
+        viewModelScope.launch {
+            val events = apiClient.getSessions(circuitShortName = circuit).map { it.session_name }.distinct()
+            _listEvents.value = events
+            println("Eventos: $events")
+        }
+    }
 
 
     fun loadLiveDriverData(
@@ -150,7 +168,6 @@ class DataScreenViewModel(
             .groupBy { it.driver_number }
             .forEach { (driverNumber, posList) ->
                 posList.maxByOrNull { it.date }?.let { latestPosition ->
-                    println("Driver $driverNumber: Position=${latestPosition.position}")  // PRINT ....
                     driverInfoMap[driverNumber]?.let { currentInfo ->
                         driverInfoMap[driverNumber] = currentInfo.copy(
                             position = latestPosition.position
@@ -167,7 +184,6 @@ class DataScreenViewModel(
                     driverInfoMap[driverNumber]?.let { currentInfo ->
                         val gap = latestInterval.gapToLeaderValue
                         val interval = latestInterval.intervalValue
-                        println("Driver $driverNumber: Gap=$gap, Interval=$interval")  //PRINT .....
                         driverInfoMap[driverNumber] = currentInfo.copy(
                             gap = gap,
                             interval = interval
